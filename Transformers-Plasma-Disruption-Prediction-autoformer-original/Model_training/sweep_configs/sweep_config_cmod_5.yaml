@@ -1,0 +1,26 @@
+command:
+- python3
+- disruption_training_script.py
+- ${args}
+method: bayes
+metric:
+  goal: minimize
+  name: eval/loss
+name: sweep_c_cmod_d_5
+parameters:
+  adam_beta1:
+    distribution: uniform
+    max: 0.99
+    min: 0.85
+  case_number:
+    value: 5
+  embd_pdrop:
+    distribution: uniform
+    max: 0.05
+    min: 1.0e-05
+  learning_rate:
+    distribution: uniform
+    max: 0.0003
+    min: 1.0e-07
+  new_machine:
+    value: cmod
