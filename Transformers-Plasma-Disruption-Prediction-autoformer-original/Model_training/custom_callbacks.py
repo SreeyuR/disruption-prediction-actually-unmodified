@@ -1,5 +1,6 @@
 import wandb
-from transformers.integrations import WandbCallback, TrainerCallback
+from transformers.integrations import WandbCallback
+from transformers.trainer_callback import TrainerCallback
 import torch
 import evaluation
 
