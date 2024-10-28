@@ -46,10 +46,7 @@ arg_values = {key: getattr(args, key) for key in arg_keys}
 # Unpack the dictionary to create local variables
 locals().update(arg_values)
 
-
-## loggin into LUCAS' wandb
-wandb_key = open(r"lucas_wandb_api", "r").readline()
-wandb.login(key=wandb_key)
+wandb.login()
 
 N_EMBD = 12
 
@@ -97,7 +94,9 @@ if __name__ == "__main__":
 
     # get the name of the data file
     cwd = os.getcwd()
-    f = utils.get_data_filename(cwd)
+    data_filename="Full_HDL_dataset_unnormalized_no_nan_column_names_w_shot_and_time.pickle"
+    folder = f"{os.getcwd()}/Transformers-Plasma-Disruption-Prediction-autoformer/Model_training"
+    f = utils.get_data_filename(folder, data_filename)
     data = load_data(f)
 
     if fix_sampling:
