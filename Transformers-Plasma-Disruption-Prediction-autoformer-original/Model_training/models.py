@@ -13,11 +13,8 @@ from transformers.modeling_outputs import (
 #     from transformers.modeling_gpt2 import GPT2ForSequenceClassification
 # else: # transformers: version 4.0
 from transformers.models.gpt2.modeling_gpt2 import (
-    GPT2ForSequenceClassification, GPT2LMHeadModel, 
-    GPT2Model, GPT2PreTrainedModel, GPT2Config,
+    GPT2ForSequenceClassification, GPT2LMHeadModel,
     GPT2ForTokenClassification)
-from transformers.models.time_series_transformer.modeling_time_series_transformer import TimeSeriesTransformerModel
-from transformers import AutoformerConfig, AutoformerForPrediction
 import copy
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 import math
@@ -477,36 +474,3 @@ class AttentionCompression(nn.Module):
         ## batched matrix x batched matrix:
         output_encoding = torch.matmul(self_attention, hidden_embs).squeeze(1)
         return output_encoding
-
-
-class PlasmaAutoformer(AutoformerForPrediction):
-    def __init__(
-        self,
-        prediction_length,
-        context_length,
-        num_time_features,
-        num_static_categorical_features,
-        num_static_real_features,
-        num_real_dynamic_features,
-        prediction_input_feature_size,
-        num_parallel_samples,
-        lags_sequence,
-        cardinality,
-        static_cat_embedding_dim,
-    ):
-        
-        autoformer_config = AutoformerConfig(
-            prediction_length=prediction_length,
-            context_length=context_length,
-            num_time_features=num_time_features,
-            num_static_categorical_features=num_static_categorical_features,
-            num_static_real_features=num_static_real_features,
-            input_size=prediction_input_feature_size,
-            num_real_dynamic_features=num_real_dynamic_features,
-            num_parallel_samples=num_parallel_samples,
-            lags_sequence=lags_sequence,
-            cardinality=cardinality, 
-            embedding_dimension=static_cat_embedding_dim,
-        )
-
-        super().__init__(autoformer_config) 

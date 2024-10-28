@@ -188,67 +188,6 @@ def augment_data_windowing(
 
     return augmented_training_data
 
-def augment_data_windowing_autoformer(
-    train_dataset, 
-    train_inds,
-    ratio_to_augment,
-    use_smoothed_tau,
-    window_length,
-    end_cutoff_timesteps,
-    prediction_length,
-    context_length,
-    max_lagged_sequence,
-    **kwargs,
-    ):
-    """Augment a sequence to label dataset by taking smaller
-    windows of the data and labelling them according to tau.
-    
-    Args:
-        train_dataset (object): Training data.
-        ratio_to_augment (int): Ratio of augmented data to original data.
-        seq_to_seq (bool): Whether to use seq_to_seq data.
-        use_smoothed_tau (bool): Whether to use smoothed tau.
-        window_length (int): Length of window to take in smoothing.
-    
-    Returns:
-        aug_train_dataset (object): Augmented training data."""
-
-    augmented_shots = {}
-    augmented_shot_ind = 0
-
-    for j in train_inds:
-        augmented_shots[augmented_shot_ind] = copy.deepcopy(train_dataset[j])
-        augmented_shot_ind += 1
-
-        for i in range(ratio_to_augment):
-            shot_length = len(train_dataset[j]["data"])
-            # sample a window within 0 and len train_dataset[j]["inputs_embeds"]
-            if shot_length - end_cutoff_timesteps - 1 <= 10:
-                continue
-            window_start = np.random.randint(0, shot_length - end_cutoff_timesteps - 1)
-            window_end = np.random.randint(window_start + end_cutoff_timesteps + 1, shot_length)
-            windowed_data = train_dataset[j]["data"][window_start:window_end]
-
-            augmented_shots[augmented_shot_ind] = {
-                "data": windowed_data,
-                "shot": str(str(train_dataset[j]["shot"]) + "_" + str(window_start) + "_to_" + str(window_end)),
-                "label": train_dataset[j]["label"],
-            }
-            augmented_shot_ind += 1
-        
-    augmented_training_data = dataset_types.AutoformerReadySeqToLabel(
-        shots=[augmented_shots[i] for i in range(augmented_shot_ind)],
-        end_cutoff_timesteps=end_cutoff_timesteps,
-        max_length=2048,
-        use_smoothed_tau=use_smoothed_tau,
-        window_length=window_length,
-        prediction_length=prediction_length,
-        context_length=context_length,
-        max_lagged_sequence=max_lagged_sequence,)
-
-    return augmented_training_data
-
-
 
 def restricted_data_augmentation_windowing(
     train_dataset,

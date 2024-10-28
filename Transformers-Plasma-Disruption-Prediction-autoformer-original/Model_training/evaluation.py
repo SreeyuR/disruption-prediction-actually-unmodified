@@ -96,56 +96,6 @@ def compute_metrics(eval_pred):
     }
 
 
-def compute_metrics_autoformer(predictions, truth, plot_label=""):
-    """Compute metrics for evaluating the autoformer.
-
-    Args:
-        eval_pred (object): Evaluation predictions.
-
-    Returns:
-        metric (object): Metric for evaluation.
-    """
-
-    if len(predictions.shape) == 1:
-        time_steps = 1
-    else:
-        time_steps = predictions.shape[1]
-    
-    if isinstance(truth, torch.Tensor):
-        truth = truth.cpu().detach().clone().numpy()
-        predictions = predictions.cpu().detach().clone().numpy()
-
-    for i in range(time_steps):
-        if time_steps == 1:
-            y_true = truth
-            y_pred = predictions
-        else:
-            y_true = truth[:, i]
-            y_pred = predictions[:, i]
-
-        y_true = (y_true > 0).astype(int)
-        y_pred = (y_pred > 0).astype(int)
-
-        report = metrics.classification_report(
-            y_true=y_true,
-            y_pred=y_pred,
-            digits=4,
-            output_dict=True,
-        )
-
-        wandb.log({
-            (plot_label + "_step_" + str(i + 1) + "_f1"): report["macro avg"]["f1-score"],
-            (plot_label + "_step_" + str(i + 1) + "_accuracy"): report["accuracy"],
-            (plot_label + "_step_" + str(i + 1) + "_precision"): report["macro avg"]["precision"],
-            (plot_label + "_step_" + str(i + 1) + "_recall"): report["macro avg"]["recall"],
-        })
-
-        auc, fpr, tpr = compute_auc(y_pred=y_pred, y_true=y_true)
-        wandb.log({(plot_label + "_step_" + str(i + 1) + "_auc"): auc})
-
-    return 
-
-
 def compute_metrics_state_prediction(eval_pred):
     """Compute metrics for evaluation.
 
@@ -569,108 +519,6 @@ def produce_smoothed_curve(shot_len, shot_tau, window_length):
     return smoothed_curve
 
 
-def predict_rolling_autoformer(
-        eval_model, test_dataset,
-        context_window, max_lagged_sequence,
-        disrupted_index, prediction_length
-):
-    """Predict a realtime rollout using the autoformer.
-    
-    Args:
-        eval_model (transformers.PreTrainedModel): Model to evaluate.
-        test_dataset (AutoformerSeqtoLabelDataset): Test dataset.
-
-    Returns:
-        preds (dict): Dictionary of rolled_predictions.
-    """
-
-    preds = {}
-
-    num_disruptions = 0
-    num_non_disruptions = 0
-    window_size = context_window + max_lagged_sequence
-
-    shot_i = 0
-
-    while num_disruptions < 10:
-
-        shot = test_dataset[shot_i]
-        shot_df = copy.deepcopy(shot['data'])
-
-        time_features = shot_df["time"].values
-
-        # cast time_features from a pd.TimeDelta into a float for seconds
-        if isinstance(time_features, pd.Timedelta) or np.issubdtype(time_features.dtype, np.timedelta64):
-            time_features = time_features.astype('timedelta64[ms]').astype(np.float32) * .001
-            time_features = np.round(time_features, 5)
-
-        time_features = dataset_types.cast_tensors_well(time_features).unsqueeze(0).unsqueeze(-1)
-        machine_indicators = dataset_types.get_machine_index(shot_df=shot_df)
-        machine_indicators = dataset_types.cast_tensors_well(machine_indicators, t=torch.long).unsqueeze(0) #.unsqueeze(-1)
-
-        shot_df.drop(columns=["time", "cmod", "d3d", "east"], inplace=True)
-        shot_df["disrupted"] = 0
-        values = dataset_types.cast_tensors_well(shot_df.values).unsqueeze(0)
-
-        # update the number of disruptions and non-disruptions...
-        label = shot["label"]
-
-        num_disruptions += int(label)
-        num_non_disruptions += int(not label)
-        
-        if int(not label) and num_non_disruptions > 9:
-            shot_i += 1
-            continue
-
-        shot_preds = []
-
-        # unroll the shot...     
-        for i in range(values.shape[1] - window_size - prediction_length):
-
-            # Get the past values and features with the fixed window size
-            past_values = values[:, i : i + window_size, :]
-            past_time_features = time_features[:, i : i + window_size]
-            
-            # Handling for future_time_features
-            future_tf_len = time_features[:, i + window_size : i + window_size + prediction_length, :].shape[1]
-            
-            if future_tf_len == 1 or future_tf_len == 2:
-                future_time_features = torch.cat(
-                    (time_features[:, i + window_size, :], 
-                    time_features[:, i + window_size, :] + 0.005, 
-                    time_features[:, i + window_size, :] + 0.01), dim=1)
-            else:
-                future_time_features = time_features[:, i + window_size : i + window_size + 3, :]
-            
-            past_values, past_time_features, machine_indicators, future_time_features = \
-                past_values.to(device=eval_model.device), \
-                past_time_features.to(device=eval_model.device), \
-                machine_indicators.to(device=eval_model.device), \
-                future_time_features.to(device=eval_model.device)
-
-            output_sequences = eval_model.generate(
-                past_values=past_values,
-                past_time_features=past_time_features,
-                future_time_features=future_time_features,
-                static_categorical_features=machine_indicators,
-            )
-
-            mean_prediction = output_sequences.sequences.mean(dim=1)
-            mean_disruption_pred = mean_prediction[:, 0, disrupted_index].squeeze() # keep the first next predicted val
-             
-            shot_preds.append(float(mean_disruption_pred.cpu().detach().numpy()))
-        
-        # store the info... 
-        preds[test_dataset[shot_i]["shot"]] = {
-            "preds": shot_preds,
-            "label": int(label),
-        }   
-
-        shot_i += 1
-
-    return preds
-
-
 def compute_thresholded_statistics(
     test_unrolled_predictions, high_threshold, low_threshold,
     hysteresis
@@ -716,11 +564,6 @@ def compute_thresholded_statistics(
             
         thresholded_preds.append(pred)
         thresholded_labels.append(label)
-    
-    compute_metrics_autoformer(
-        predictions=np.array(thresholded_preds),
-        truth=np.array(thresholded_labels),
-        plot_label="thresholded_test")
     
     return
         

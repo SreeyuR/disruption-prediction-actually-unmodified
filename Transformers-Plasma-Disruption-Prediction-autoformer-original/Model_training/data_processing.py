@@ -13,7 +13,7 @@ import pandas as pd
 import copy
 from dataset_types import (
     ModelReadyDataset, ModelReadyDatasetSeqtoSeqDisruption,
-    ModelReadyDatasetStatePretraining, AutoformerReadySeqToLabel)
+    ModelReadyDatasetStatePretraining)
 from dataset_augmentation_strategies import (
     augment_data_windowing, augment_training_set, restricted_data_augmentation_windowing,)
 import dataset_augmentation_strategies
@@ -206,9 +206,6 @@ def process_train_test_val_inds(
     elif dataset_type == "seq_to_seq":
         DatasetPlaceholder = ModelReadyDatasetSeqtoSeqDisruption
         seq_to_seq = True
-    elif dataset_type == "autoformer":
-        DatasetPlaceholder = AutoformerReadySeqToLabel
-        seq_to_seq = False
     else:
         raise ValueError("Invalid dataset type.")
 
@@ -234,26 +231,14 @@ def process_train_test_val_inds(
     val_dataset.move_data_to_device()
                 
     if data_augmentation_windowing and dataset_type != "state":
-        if dataset_type == "autoformer":
-            train_dataset = dataset_augmentation_strategies.augment_data_windowing_autoformer(
-                dataset,
-                ratio_to_augment=4,
-                **data_processing_args,
-            )
-            val_dataset = dataset_augmentation_strategies.augment_data_windowing_autoformer(
-                dataset,
-                ratio_to_augment=4,
-                **data_processing_args,
-            )
-        else:
-            train_dataset = augment_data_windowing(
-                train_dataset,
-                **data_processing_args,
-            )
-            val_dataset = augment_data_windowing(
-                val_dataset,
-                **data_processing_args,
-            )
+        train_dataset = augment_data_windowing(
+            train_dataset,
+            **data_processing_args,
+        )
+        val_dataset = augment_data_windowing(
+            val_dataset,
+            **data_processing_args,
+        )
     
     if data_augmentation and dataset_type != "state":
         train_dataset = augment_training_set(
@@ -376,59 +361,6 @@ def collate_fn_seq_to_seq_state(dataset):
 
     return output
 
-
-def collate_fn_autoformers(dataset, pad_from_left, truncate_longer=False):
-    """Takes in an instance of Torch Dataset and collates sequences
-    for inputs and outputs.
-    """
-
-    output = {}
-
-    if pad_from_left: 
-        output["past_values"] = pad_sequence(
-            [df["past_values"].to(dtype=torch.float32) for df in dataset],
-            padding_value=0,
-            batch_first=True)
-        
-        output["future_values"] = pad_sequence(
-            [df["future_values"].to(dtype=torch.float32) for df in dataset],
-            padding_value=0,
-            batch_first=True)
-        
-        output["past_time_features"] = pad_sequence(
-            [df["past_time_features"].to(
-                dtype=torch.float32) for df in dataset],
-            padding_value=0,
-            batch_first=True)
-        
-        output["future_time_features"] = pad_sequence(
-            [df["future_time_features"].to(
-                dtype=torch.float32) for df in dataset],
-            padding_value=0,
-            batch_first=True)
-        
-        output["static_categorical_features"] = torch.vstack(
-            [df["static_categorical_features"].to(
-                dtype=torch.long) for df in dataset])
-
-    else:
-        output["past_values"] = pad_from_right(
-            dataset, "past_values", truncate_longer)
-        output["future_values"] = pad_from_right(
-            dataset, "future_values", truncate_longer)
-        output["past_time_features"] = pad_from_right(
-            dataset, "past_time_features", truncate_longer)
-        output["future_time_features"] = pad_from_right(
-            dataset, "future_time_features", truncate_longer)
-
-    if "static_categorical_features" in dataset[0].keys():
-        output["static_categorical_features"] = torch.vstack(
-            [df["static_categorical_features"].to(
-                dtype=torch.long) for df in dataset])
-        
-    output["attention_mask"] = (output["past_values"][:, :, 1] != -100).to(torch.long).unsqueeze(-1)
-
-    return output
 
 Inds = collections.namedtuple("Inds", ["existing", "new", "disr", "nondisr"])
 
