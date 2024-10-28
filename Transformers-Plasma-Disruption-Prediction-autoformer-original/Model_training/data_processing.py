@@ -96,9 +96,20 @@ def train_test_val_inds_from_file(
         val_inds (list): List of validation indices.
     """
 
-    train_inds = pd.read_csv(f"train_inds_case{case_number}.csv")["dataset_index"].tolist()
-    test_inds = pd.read_csv(f"holdout_inds_case{case_number}.csv")["dataset_index"].tolist()
-    val_inds = pd.read_csv(f"val_inds_case{case_number}.csv")["dataset_index"].tolist()
+    # train_inds = pd.read_csv(f"train_inds_case{case_number}.csv")["dataset_index"].tolist()
+    # test_inds = pd.read_csv(f"holdout_inds_case{case_number}.csv")["dataset_index"].tolist()
+    # val_inds = pd.read_csv(f"val_inds_case{case_number}.csv")["dataset_index"].tolist()
+
+    print(f'current working directory V2: {os.getcwd()}')
+    train_inds = pd.read_csv(
+        f"{os.getcwd()}/tokamak/Transformers-Plasma-Disruption-Prediction-autoformer/Model_training/train_inds_case{case_number}.csv")[
+        "dataset_index"].tolist()
+    test_inds = pd.read_csv(
+        f"{os.getcwd()}/tokamak/Transformers-Plasma-Disruption-Prediction-autoformer/Model_training/holdout_inds_case{case_number}.csv")[
+        "dataset_index"].tolist()
+    val_inds = pd.read_csv(
+        f"{os.getcwd()}/tokamak/Transformers-Plasma-Disruption-Prediction-autoformer/Model_training/val_inds_case{case_number}.csv")[
+        "dataset_index"].tolist()
 
     if testing:
         train_inds = train_inds[:50]

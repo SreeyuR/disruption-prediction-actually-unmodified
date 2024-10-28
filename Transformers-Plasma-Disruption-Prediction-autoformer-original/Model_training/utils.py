@@ -47,23 +47,27 @@ def return_round_robin_filename():
     return next_log_filename
 
 
-def get_data_filename(cwd):
-    """Return the filename for the data file.
+def get_data_filename(folder, filename):
+    """
+    Retrieves the full path for the specified data file.
 
     Args:
-        cwd (str): Current working directory.
-    
+        folder (str): The name of the folder where the data file is located.
+        filename (str): The name of the data file.
+
     Returns:
-        f (str): Filename for the data file.
+        str: Full path to the data file.
+
+    Raises:
+        FileNotFoundError: If the data file is not found.
     """
-    if os.path.exists(cwd + "/Model_training/Full_HDL_dataset_unnormalized_no_nan_column_names_w_shot_and_time.pickle"):
-        f = cwd + "/Model_training/Full_HDL_dataset_unnormalized_no_nan_column_names_w_shot_and_time.pickle"
-    elif os.path.exists(cwd + "/Full_HDL_dataset_unnormalized_no_nan_column_names_w_shot_and_time.pickle"):
-        f = cwd + "/Full_HDL_dataset_unnormalized_no_nan_column_names_w_shot_and_time.pickle"
+    cwd = os.path.join(os.getcwd(), folder)
+    print(f'Current Working Directory: {cwd}')
+    if os.path.exists(os.path.join(cwd, filename)):
+        f = os.path.join(cwd, filename)
     else:
         raise FileNotFoundError("Could not find the data file.")
     return f
-
 
 def set_up_wandb(model, training_args, seed, parsed_args):
     """Set up wandb for logging.
