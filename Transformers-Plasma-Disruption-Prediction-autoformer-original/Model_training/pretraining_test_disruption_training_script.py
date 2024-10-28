@@ -104,7 +104,6 @@ if __name__ == "__main__":
         tau=tau,
         testing=testing,
         data_augmentation=False, # TODO: add data augmentation for states
-        data_augmentation_windowing=False,
         data_augmentation_factor=data_augmentation_factor,
         scaling_type=scaling_type,
         tau_additions_switch=tau_additions_switch,) 

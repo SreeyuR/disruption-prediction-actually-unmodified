@@ -14,8 +14,7 @@ import copy
 from dataset_types import (
     ModelReadyDataset, ModelReadyDatasetSeqtoSeqDisruption,
     ModelReadyDatasetStatePretraining)
-from dataset_augmentation_strategies import (
-    augment_data_windowing, augment_training_set, restricted_data_augmentation_windowing,)
+from dataset_augmentation_strategies import augment_training_set
 import dataset_augmentation_strategies
 
 from fastdtw import fastdtw
@@ -177,7 +176,6 @@ def process_train_test_val_inds(
         taus (dict): Number of timesteps to use for disruption prediction, separated by machine.
         seq_to_seq (bool): Whether to use a seq-to-seq model.
         data_augmentation (bool): Whether to use data augmentation.
-        data_augmentation_windowing (bool): Whether to use data augment using windows of the data.
         data_augmentation_ratio (int): Factor by which to augment data.
         scaling_type (str): Type of scaling to use.
         balance_classes (bool): Whether to balance the classes.
@@ -194,7 +192,6 @@ def process_train_test_val_inds(
     scale_labels = False
     dataset_type = data_processing_args["dataset_type"]
     data_augmentation = data_processing_args["data_augmentation"]
-    data_augmentation_windowing = data_processing_args["data_augmentation_windowing"]
 
     if dataset_type == "state":
         DatasetPlaceholder = ModelReadyDatasetStatePretraining
@@ -229,17 +226,8 @@ def process_train_test_val_inds(
     val_dataset.variably_scale_with_another_scaler(
         train_scaler, scale_labels=scale_labels)
     val_dataset.move_data_to_device()
-                
-    if data_augmentation_windowing and dataset_type != "state":
-        train_dataset = augment_data_windowing(
-            train_dataset,
-            **data_processing_args,
-        )
-        val_dataset = augment_data_windowing(
-            val_dataset,
-            **data_processing_args,
-        )
-    
+
+
     if data_augmentation and dataset_type != "state":
         train_dataset = augment_training_set(
             train_dataset,

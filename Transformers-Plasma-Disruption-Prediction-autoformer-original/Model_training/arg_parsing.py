@@ -58,7 +58,6 @@ def get_args():
     parser.add_argument("--no_save", type=str2bool, default=True)
     parser.add_argument("--normalize_loss_by_sequence_length", type=str2bool, default=True)
     parser.add_argument("--data_augmentation", type=str2bool, default=False)
-    parser.add_argument("--data_augmentation_windowing", type=str2bool, default=True)
     parser.add_argument("--data_augmentation_ratio", type=int, default=2)
     parser.add_argument("--data_augmentation_intensity", type=float, default=1)
     parser.add_argument("--data_augmentation_factor", type=float, default=1) # deprecated TODO: remove.
@@ -99,7 +98,7 @@ def get_args():
     parser.add_argument("--tau_d3d", type=int, default=35)
     parser.add_argument("--tau_east", type=int, default=75)
     parser.add_argument("--standardize_disruptivity_plot_length", type=str2bool, default=True)
-    parser.add_argument("--use_smoothed_tau", type=str2bool, default=True)
+    parser.add_argument("--use_smoothed_tau", type=str2bool, default=True) # always true
     parser.add_argument("--alex_method", type=str, default=False)
     parser.add_argument('--data_context_length', type=int, default=100)
     parser.add_argument('--fix_sampling', type=str2bool, default=True)

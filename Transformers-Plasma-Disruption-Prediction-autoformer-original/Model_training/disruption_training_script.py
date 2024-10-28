@@ -168,7 +168,6 @@ if __name__ == "__main__":
         "dataset_type": "state",
         "taus": taus,
         "data_augmentation": data_augmentation,
-        "data_augmentation_windowing": data_augmentation_windowing,
         "data_augmentation_intensity": data_augmentation_ratio,
         "data_augmentation_ratio": data_augmentation_ratio,
         "ratio_to_augment": data_augmentation_ratio,
