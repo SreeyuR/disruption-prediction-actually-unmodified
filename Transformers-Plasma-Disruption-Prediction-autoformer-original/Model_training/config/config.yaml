@@ -1,0 +1,94 @@
+default: &DEFAULT
+
+  verbose: True
+  logging_file: "test_trainer.log"
+
+  seed: 42
+
+  # Transformer Architecture Parameters
+  transformer:
+    n_head: 1
+    n_layer: 10
+    n_inner: 10
+    attn_pdrop: 0.1
+    activation_function: "gelu"
+    resid_pdrop: 0.1
+    embd_pdrop: 0.1
+    layer_norm_epsilon: 1e-5
+    max_length: 2048
+    pad_from_left: True
+    truncate_longer: True
+    attention_head_at_end: False
+    num_embeddings: 12
+
+  # Training Parameters
+  training:
+    max_steps: 30000
+    learning_rate: 1e-4
+    lr_scheduler_type: "linear"
+    warmup_steps: 50
+    adam_beta1: 0.9
+    adam_beta2: 0.999
+    testing: True
+    no_save: True
+    inverse_class_weighting: True
+    data_augmentation: False
+    data_augmentation_windowing: True
+    data_augmentation_ratio: 2
+    data_augmentation_intensity: 1.0
+    scaling_type: "standard"
+    pretraining_max_steps: 7000
+    pretraining_batch_size: 256
+    pretraining_loss: "log_cosh"
+    pretraining: False
+    curriculum_steps: 2
+    balance_classes: False
+    regularize_logits: True
+    regularize_logits_weight: 0.1
+    model_type: "seq_to_label"
+    vanilla_loss: True
+    disruptivity_distance_window_length: 8
+
+  # Dataset related Parameters
+  data:
+    filename: "Full_HDL_dataset_unnormalized_no_nan_column_names_w_shot_and_time.pickle"
+    folder: "" #"tokamak/Transformers-Plasma-Disruption-Prediction-autoformer/Model_training"
+    dataset_type: "state"
+    cmod_hyperparameter_non_disruptions: 0.1
+    cmod_hyperparameter_disruptions: 0.9
+    d3d_hyperparameter_non_disruptions: 0.1
+    d3d_hyperparameter_disruptions: 0.9
+    east_hyperparameter_non_disruptions: 0.05
+    east_hyperparameter_disruptions: 0.92
+    seed: 42
+    end_cutoff_timesteps: 8
+    end_cutoff_timesteps_test: 8
+    case_number: 6
+    tau_cmod: 12 # TODO: ASK: Is this a time constant associated with tokamak?
+    tau_d3d: 35
+    tau_east: 75
+    standardize_disruptivity_plot_length: True
+    use_smoothed_tau: True
+    alex_method: False
+    data_context_length: 100
+    fix_sampling: True
+    keep_jx_uneven_sampling: True # flag indicating whether to keep the original uneven sampling for a specific machine
+    smooth_v_loop: True
+    v_loop_smoother: 10
+
+  # Evaluation Parameters
+  eval:
+    save_directory: "disruption_prediction_transformer"
+    eval_high_thresh: 0.8
+    eval_low_thresh: 0.5
+    eval_hysteresis: 2
+    sweep_id: None
+    unrolled_smoothing: 10
+
+  # Weights and biases
+  wandb:
+    log: False
+    sweep: False
+    name: "my-version disruption prediction pipeline" # If None, config will be used but you can override it here
+    group: "my-pipeline"
+    project: "HDL-improvement-transformer"
