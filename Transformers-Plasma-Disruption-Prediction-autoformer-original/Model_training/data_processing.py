@@ -115,51 +115,6 @@ def train_test_val_inds_from_file(
     return train_inds, test_inds, val_inds
 
 
-def train_test_val_inds(
-        dataset,
-        new_machine,
-        case_number,
-        testing,
-        causal_matching,
-        distance_fn_name,
-        taus,
-        ):
-    """Get train, test, and validation indices for a dataset. 
-    Separating this function out now so that the same indices 
-    can be used for all curriculum steps.
-
-    Args:
-        dataset (str): Name of the dataset.
-        new_machine (str): Name of the machine.
-        case_number (int): Case number.
-        testing (bool): Whether to use a small subset of the data for testing.
-
-    Returns:
-        train_inds (list): List of training indices.
-        test_inds (list): List of testing indices.
-        val_inds (list): List of validation indices.
-    """
-
-    temp_train_inds, test_inds = get_train_test_indices_from_Jinxiang_cases(
-        dataset=dataset,
-        case_number=case_number,
-        new_machine=new_machine,
-        seed=42)
-    
-    np.random.shuffle(temp_train_inds)
-    train_inds, val_inds = (
-        temp_train_inds[:int(len(temp_train_inds) * .85)], 
-        temp_train_inds[int(len(temp_train_inds) * .85):]
-    )
-
-    if testing:
-        train_inds = train_inds[:50]
-        test_inds = test_inds[:50]
-        val_inds = val_inds[:50]
-
-    return train_inds, test_inds, val_inds
-
-
 def process_train_test_val_inds(
         dataset,
         train_inds,
@@ -185,7 +140,6 @@ def process_train_test_val_inds(
         data_augmentation_windowing (bool): Whether to use data augment using windows of the data.
         data_augmentation_ratio (int): Factor by which to augment data.
         scaling_type (str): Type of scaling to use.
-        balance_classes (bool): Whether to balance the classes.
         max_length (int): Maximum length of the dataset.
 
     Returns:

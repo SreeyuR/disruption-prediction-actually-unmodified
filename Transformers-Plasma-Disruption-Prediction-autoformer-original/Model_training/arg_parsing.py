@@ -30,15 +30,6 @@ def get_args():
     parser.add_argument("--truncate_longer", type=str2bool, default=True)
     parser.add_argument("--attention_head_at_end", type=str2bool, default=False)
 
-    # autoformer parameters
-    parser.add_argument('--context_length', type=int, default=20, help='The context length for the Autoformer model.')
-    parser.add_argument('--prediction_length', type=int, default=3, help='The prediction length for the Autoformer model.')
-    parser.add_argument(
-        '--lags_sequence', type=str, 
-        default="1_2_3_4_5_6_7_10_11_12_13_15",
-        help='The lags sequence for the Autoformer model.')
-    parser.add_argument('--lags_sequence_num', type=int, default=1, help='The lags sequence case num.')
-
     # training parameters
     parser.add_argument("--max_steps", type=int, default=30000)
     parser.add_argument("--batch_size", type=int, default=256)
