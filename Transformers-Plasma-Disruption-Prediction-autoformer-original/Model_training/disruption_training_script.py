@@ -80,7 +80,13 @@ if __name__ == "__main__":
         attention_head_at_end=attention_head_at_end,)
     
     print("sending model to device...")
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.backends.mps.is_available():
+        device = torch.device("mps")
+    elif torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
     print(f"Device: {device}")
 
@@ -214,9 +220,12 @@ if __name__ == "__main__":
             compute_metrics=evaluation.compute_metrics_state_prediction,
             # callbacks=[AllWandbCallback(prefix="state_pretraining")],
         )
-
-        if torch.cuda.is_available():
-            pretrainer.device = torch.device('cuda')
+        if torch.backends.mps.is_available():
+            pretrainer.device = torch.device("mps")
+        elif torch.cuda.is_available():
+            pretrainer.device = torch.device("cuda")
+        else:
+            pretrainer.device = torch.device("cpu")
 
         # torch.compile(pretrainer.model)
         pretrainer.train()
@@ -308,8 +317,12 @@ if __name__ == "__main__":
                 optimizers=(optimizer, None),
             )
 
-        if torch.cuda.is_available():
-            trainer.device = torch.device('cuda')
+        if torch.backends.mps.is_available():
+            trainer.device = torch.device("mps")
+        elif torch.cuda.is_available():
+            trainer.device = torch.device("cuda")
+        else:
+            trainer.device = torch.device("cpu")
 
         # Train the model and get the training state
         training_state = trainer.train()
