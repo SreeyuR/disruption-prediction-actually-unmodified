@@ -32,7 +32,6 @@ default: &DEFAULT
     testing: True
     no_save: True
     inverse_class_weighting: True
-    data_augmentation: False
     data_augmentation_windowing: True
     data_augmentation_ratio: 2
     data_augmentation_intensity: 1.0
@@ -42,7 +41,6 @@ default: &DEFAULT
     pretraining_loss: "log_cosh"
     pretraining: False
     curriculum_steps: 2
-    balance_classes: False
     regularize_logits: True
     regularize_logits_weight: 0.1
     model_type: "seq_to_label"
