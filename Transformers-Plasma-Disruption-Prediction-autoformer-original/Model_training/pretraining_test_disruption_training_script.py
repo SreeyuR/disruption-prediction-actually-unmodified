@@ -10,7 +10,7 @@ import wandb
 from custom_callbacks import AllWandbCallback
 import custom_callbacks
 from models import PlasmaTransformerSeqtoLab, PlasmaTransformerSeqtoSeq, StatePredictionPlasmaTransformer
-from data_processing import load_data, collate_fn_seq_to_label, collate_fn_seq_to_seq
+from data_processing import load_data, collate_fn_seq_to_label
 import data_processing
 from evaluation import MultiLossExperimentalTrainer
 import evaluation, arg_parsing
@@ -149,9 +149,6 @@ if __name__ == "__main__":
     else:    
         early_stopping = custom_callbacks.NoSaveEarlyStoppingCallback(
             early_stopping_patience=10, early_stopping_threshold=0.001)
-
-    if seq_to_label + seq_to_seq_vanilla > 1:
-        raise ValueError("Only one of seq_to_label and seq_to_seq_vanilla can be True")
 
     # Set up state_ptretraining Trainer 
 

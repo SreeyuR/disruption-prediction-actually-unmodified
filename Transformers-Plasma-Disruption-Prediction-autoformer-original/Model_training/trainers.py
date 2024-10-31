@@ -78,7 +78,6 @@ class ClassImbalanceLossTrainer(Trainer):
         class_weights (np.array): List of weights for each class."""
     def __init__(self,
                 device,
-                seq_to_seq,
                 class_weights,
                 regularize_logits,
                 regularize_logits_weight,
@@ -90,18 +89,13 @@ class ClassImbalanceLossTrainer(Trainer):
         self.inverse_class_weights = torch.Tensor(1/np.array(class_weights)).to(self.device)
         self.regularize_logits = regularize_logits
         self.regularize_logits_weight = regularize_logits_weight
-        self.seq_to_seq = seq_to_seq
     
     def compute_loss(self, model, inputs, return_outputs=False):
         labels = inputs.pop("labels").to(self.device)
         outputs = model(**inputs)
         logits = outputs.logits
 
-        if self.seq_to_seq:
-            logits = logits.permute(0, 2, 1)
-            labels = labels.squeeze(-1)
-        else:
-            labels = labels[:, 1].to(torch.long)
+        labels = labels[:, 1].to(torch.long)
         
         # compute the cross-entropy loss using the weighted logits
         loss = F.cross_entropy(
@@ -112,39 +106,31 @@ class ClassImbalanceLossTrainer(Trainer):
             ignore_index=-100)
 
         if self.regularize_logits:
-            penalty = self.regularize_logits_fn(inputs, model, self.seq_to_seq)
+            penalty = self.regularize_logits_fn(inputs, model)
             combined_loss = loss + self.regularize_logits_weight * penalty
             return (combined_loss, outputs) if return_outputs else combined_loss
         
         return (loss, outputs) if return_outputs else loss
     
-    def regularize_logits_fn(self, inputs, model, seq_to_seq):
+    def regularize_logits_fn(self, inputs, model):
         """Return a penalty if logits increase non-monotonically or by a lot.
         
         Args:
             inputs (dict): Input dictionary.
             model (object): Model.
-            seq_to_seq (bool): Whether the model is a seq to seq model.
         
         Returns:
             torch.Tensor: Penalty."""
         
-        if not seq_to_seq:
-            probs = []
-            for t in range(1, inputs["inputs_embeds"].size()[1], 10):  ## TODO... implement in seq to seq! 
-                model_outputs = model(
-                    inputs_embeds=inputs["inputs_embeds"][:, :t, :].to(torch.float16),
-                    attention_mask=inputs["attention_mask"][:, :t])
-                model_output = model_outputs.logits
-                prob = F.softmax(model_output, dim=-1)[:, 1]
-                probs.append(prob)
-            probs = torch.vstack(probs)
-        else:
+        probs = []
+        for t in range(1, inputs["inputs_embeds"].size()[1], 10):  ## TODO... implement in seq to seq! 
             model_outputs = model(
-                inputs_embeds=inputs["inputs_embeds"].unsqueeze(0).to(torch.float16),
-                attention_mask=inputs["attention_mask"])
+                inputs_embeds=inputs["inputs_embeds"][:, :t, :].to(torch.float16),
+                attention_mask=inputs["attention_mask"][:, :t])
             model_output = model_outputs.logits
-            probs = F.softmax(model_output, dim=-1)[:, :, 1]
+            prob = F.softmax(model_output, dim=-1)[:, 1]
+            probs.append(prob)
+        probs = torch.vstack(probs)
 
         # select the probabilities for the positive class
         probs_diff = torch.diff(probs, dim=1)

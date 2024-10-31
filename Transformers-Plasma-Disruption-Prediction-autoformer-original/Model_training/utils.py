@@ -233,7 +233,6 @@ def determine_class_proportions(
     train_dataset,
     inverse_class_weighting,
     seq_to_label,
-    seq_to_seq
 ):
     """Determine the class proportions for the dataset.
     
@@ -241,7 +240,6 @@ def determine_class_proportions(
         train_dataset (Dataset): The training dataset.
         inverse_class_weighting (bool): Whether to use inverse class weighting or not.
         seq_to_label (bool): Whether the dataset is seq_to_label or not.
-        seq_to_seq (bool): Whether the dataset is seq_to_seq or not.
         
     Returns:
         list: A list containing the class proportions."""
@@ -250,10 +248,6 @@ def determine_class_proportions(
         n = len(train_dataset)
         d = train_dataset.num_disruptions
         class_proportions = [(n - d) / n - .0001, d / n + .0001] 
-    elif inverse_class_weighting and seq_to_seq:
-        n = np.sum([len(df["inputs_embeds"]) for df in train_dataset])
-        d = train_dataset.num_disruptive_values
-        class_proportions = [(n - d) / n - .0001, d / n + .0001]
     else:
         class_proportions = [1, 1]
 

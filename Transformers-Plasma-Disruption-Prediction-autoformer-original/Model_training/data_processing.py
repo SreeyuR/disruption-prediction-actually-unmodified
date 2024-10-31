@@ -136,7 +136,6 @@ def process_train_test_val_inds(
         case_number (int): Case number to use for training set composition, see Xu, 2021.
         testing (bool): Whether to use a reduced sample for code testing.
         taus (dict): Number of timesteps to use for disruption prediction, separated by machine.
-        seq_to_seq (bool): Whether to use a seq-to-seq model.
         data_augmentation_windowing (bool): Whether to use data augment using windows of the data.
         data_augmentation_ratio (int): Factor by which to augment data.
         scaling_type (str): Type of scaling to use.
@@ -156,14 +155,9 @@ def process_train_test_val_inds(
 
     if dataset_type == "state":
         DatasetPlaceholder = ModelReadyDatasetStatePretraining
-        seq_to_seq = False
         scale_labels = True
     elif dataset_type == "seq_to_label":
         DatasetPlaceholder = ModelReadyDataset
-        seq_to_seq = False
-    elif dataset_type == "seq_to_seq":
-        DatasetPlaceholder = ModelReadyDatasetSeqtoSeqDisruption
-        seq_to_seq = True
     else:
         raise ValueError("Invalid dataset type.")
 
@@ -263,30 +257,6 @@ def pad_from_right(batch_df, feature, truncate_longer):
 
     return padded_sequences
 
-
-def collate_fn_seq_to_seq(dataset):
-    """
-    Takes in an instance of Torch Dataset and collates sequences for inputs and outputs.
-    Returns:
-     * input_embeds: tensor, size: Batch x (padded) seq_length x embedding_dim
-     * label_ids: tensor, size: Batch x (padded) seq_length x 1 
-    """
-
-    output = {}
-
-    output['inputs_embeds'] = pad_sequence(
-        [df["inputs_embeds"].to(dtype=torch.float16) for df in dataset],
-        padding_value=-100,
-        batch_first=True)
-    
-    output['labels'] = pad_sequence(
-        [df["labels"].to(dtype=torch.long) for df in dataset],
-        padding_value=-100,
-        batch_first=True)
-    
-    output["attention_mask"] = (output["inputs_embeds"][:, :, 1] != -100).to(torch.long)
-
-    return output
 
 
 def collate_fn_seq_to_seq_state(dataset):
@@ -474,31 +444,6 @@ def get_class_weights(train_dataset):
     return class_weights
 
 
-def get_class_weights_seq_to_seq(train_dataset):
-    """Get class weights for the training set.
-
-    Args:
-        train_dataset (object): Training set.
-
-    Returns:
-        class_weights (list): List of class weights.
-    """
-    class_counts = {0: 0, 1: 0}
-
-    for i in range(len(train_dataset)):
-        df = train_dataset[i]
-        ones = torch.sum(df["labels"])
-        zeros = len(df["labels"]) - ones
-        class_counts[0] += zeros
-        class_counts[1] += ones
-    class_weights = [class_counts[key]/sum(class_counts.values()) for key in class_counts.keys()]
-
-    print("class weights: ")
-    print(class_weights)
-
-    return class_weights
-
-
 def get_class_weights_main(
         train_dataset,
         testing=False,
@@ -516,10 +461,7 @@ def get_class_weights_main(
 
     # if testing:
     #     class_weights = np.array([.5, .5])
-    if multi_loss:
-        class_weights = get_class_weights_seq_to_seq(train_dataset)
-    else:
-        class_weights = get_class_weights(train_dataset)
+    class_weights = get_class_weights(train_dataset)
     return class_weights
 
 

@@ -9,7 +9,6 @@ import copy
 
 def augment_training_set(
         train_dataset,
-        seq_to_seq,
         balance_positive_and_negative_cases,
         ratio_to_augment,
         data_augmentation_intensity, **kwargs):
@@ -18,7 +17,6 @@ def augment_training_set(
 
     Args:
         train_dataset (object): Training data.
-        seq_to_seq (bool): Whether to use seq_to_seq data.
         balance_positive_and_negative_cases (bool): Whether to balance the positive and negative
             cases in the training set.
         ratio_to_augment (int): Ratio of augmented data to original data.
@@ -50,7 +48,7 @@ def augment_training_set(
     augmented_shot_ind = 0
 
     for i in range(len(train_dataset)):
-        lab = train_dataset[i]["labels"][-1] if seq_to_seq else train_dataset[i]["labels"][1]
+        lab = train_dataset[i]["labels"][1]
         
         # now disruptions are coded as (machine_hyperparam["machine"])
         if lab > .5 :
@@ -83,10 +81,7 @@ def augment_training_set(
         else:
             raise ValueError("Invalid label value.")
 
-    if seq_to_seq:
-        DatasetPlaceholder = dataset_types.ModelReadyDatasetSeqtoSeqDisruption
-    else:
-        DatasetPlaceholder = dataset_types.ModelReadyDataset
+    DatasetPlaceholder = dataset_types.ModelReadyDataset
     
     augmented_training_data = DatasetPlaceholder(
         shots=[augmented_shots[i] for i in range(augmented_shot_ind)],
@@ -104,7 +99,7 @@ def augment_training_set(
 
 def augment_data_windowing(
     train_dataset, ratio_to_augment,
-    seq_to_seq, use_smoothed_tau,
+    use_smoothed_tau,
     window_length, **kwargs):
     """Augment a sequence to label dataset by taking smaller
     windows of the data and labelling them according to tau.
@@ -112,7 +107,6 @@ def augment_data_windowing(
     Args:
         train_dataset (object): Training data.
         ratio_to_augment (int): Ratio of augmented data to original data.
-        seq_to_seq (bool): Whether to use seq_to_seq data.
         use_smoothed_tau (bool): Whether to use smoothed tau.
         window_length (int): Length of window to take in smoothing.
     
@@ -123,7 +117,7 @@ def augment_data_windowing(
     taus = train_dataset.taus
     
     for j in range(len(train_dataset)):
-        train_label = train_dataset[j]["labels"][-1] if seq_to_seq else train_dataset[j]["labels"][1]
+        train_label = train_dataset[j]["labels"][1]
         augmented_shots[augmented_shot_ind] = {
             "label": train_label,
             "data": train_dataset[j]["inputs_embeds"],
@@ -164,10 +158,7 @@ def augment_data_windowing(
                 "shot": train_dataset[j]["shot"] + "_" + str(window_start) + "_to_" + str(window_end),
             }
             augmented_shot_ind += 1
-    if seq_to_seq:
-        DatasetPlaceholder = dataset_types.ModelReadyDatasetSeqtoSeqDisruption
-    else:
-        DatasetPlaceholder = dataset_types.ModelReadyDataset
+    DatasetPlaceholder = dataset_types.ModelReadyDataset
         
     augmented_training_data = DatasetPlaceholder(
         shots=[augmented_shots[i] for i in range(augmented_shot_ind)],
@@ -180,14 +171,13 @@ def augment_data_windowing(
     return augmented_training_data
 def restricted_data_augmentation_windowing(
     train_dataset,
-    seq_to_seq, use_smoothed_tau,
+    use_smoothed_tau,
     window_length, context_length):
     """Augment a sequence to label dataset by taking smaller
     windows of the data and labelling them according to tau.
     
     Args:
         train_dataset (object): Training data.
-        seq_to_seq (bool): Whether to use seq_to_seq data.
         use_smoothed_tau (bool): Whether to use smoothed tau.
         window_length (int): Length of window to take in smoothing.
         context_length (int): Length of context to use in windowing the data.
@@ -199,7 +189,7 @@ def restricted_data_augmentation_windowing(
     taus = train_dataset.taus
     
     for j in range(len(train_dataset)):
-        train_label = train_dataset[j]["labels"][-1] if seq_to_seq else train_dataset[j]["labels"][1]
+        train_label = train_dataset[j]["labels"][1]
         shot_length = len(train_dataset[j]["inputs_embeds"])
         window_start = shot_length - context_length
         # if the context is larger than the shot_length, don't discard the shot
@@ -241,10 +231,7 @@ def restricted_data_augmentation_windowing(
             }
             augmented_shot_ind += 1
             window_start -= context_length
-    if seq_to_seq:
-        DatasetPlaceholder = dataset_types.ModelReadyDatasetSeqtoSeqDisruption
-    else:
-        DatasetPlaceholder = dataset_types.ModelReadyDataset
+    DatasetPlaceholder = dataset_types.ModelReadyDataset
         
     augmented_training_data = DatasetPlaceholder(
         shots=[augmented_shots[i] for i in range(augmented_shot_ind)],

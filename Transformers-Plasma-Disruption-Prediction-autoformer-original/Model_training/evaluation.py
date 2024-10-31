@@ -25,42 +25,6 @@ COLUMN_NAMES = constants.COLUMN_NAMES
 FEATURE_COLUMN_NAMES =  constants.FEATURE_COLUMN_NAMES
 
 
-def compute_metrics_seq_to_seq(eval_pred):
-    """Compute metrics for evaluation.
-
-    Args:
-        eval_pred (object): Evaluation predictions.
-
-    Returns:
-        metric (object): Metric for evaluation.
-    """
-    
-    logits, labels = eval_pred
-    labels = labels.squeeze()
-    predictions = np.argmax(logits, axis=-1)
-
-    # create a mask tensor to ignore the -100 tokens
-    mask = labels != -100
-
-    # compute the classification report on the valid tokens only
-    report = metrics.classification_report(
-        y_true=labels[mask],
-        y_pred=predictions[mask],
-        digits=4,
-        output_dict=True,
-        zero_division="warn"
-    )
-
-    # TODO: rerun with/without weighted avg!!!
-
-    return {
-        "f1": report["macro avg"]["f1-score"],
-        "accuracy": report["accuracy"],
-        "precision": report["macro avg"]["precision"],
-        "recall": report["macro avg"]["recall"],
-    }
-
-
 def compute_metrics(eval_pred):
     """Compute metrics for evaluation.
 
@@ -126,7 +90,7 @@ def compute_metrics_state_prediction(eval_pred):
     }
 
 
-def compute_metrics_after_training(y_true, y_pred, label="", seq_to_seq=False):
+def compute_metrics_after_training(y_true, y_pred, label=""):
     """Compute metrics for evaluation after training is complete.
 
     Args:
@@ -173,13 +137,12 @@ def compute_auc(
     return auc, fpr, tpr
 
 
-def draw_probabilities_from_trainer(trainer, test_dataset, seq_to_seq=False):
+def draw_probabilities_from_trainer(trainer, test_dataset):
     """Draw predicted probabilities from the model.
     
     Args:
         trainer (object): Trainer object from huggingface.
         test_dataset (object): Test dataset, of ModelReadyDataset.
-        seq_to_seq (bool): Whether the model is seq_to_seq or not.
     
     Returns:
         probs (np.array): Predicted probabilities.
@@ -190,21 +153,9 @@ def draw_probabilities_from_trainer(trainer, test_dataset, seq_to_seq=False):
     true_labels = outputs.label_ids
     logits = outputs.predictions
     
-    if seq_to_seq:
-        probs = F.softmax(torch.tensor(logits), dim=2) 
-
-        mask = (true_labels != -100)
-        true_labels = true_labels[mask]
-        
-        # convert y_pred to np.array and add a dimension at the end
-        probs = probs[:, : ,1]
-        probs = probs[mask.squeeze(-1)]  # Change here
-        probs = probs.tolist()
-
-    else: 
-        probs = F.softmax(torch.tensor(logits), dim=1)
-        probs = probs[:, 1].tolist()
-        true_labels = np.argmax(true_labels, axis=-1)
+    probs = F.softmax(torch.tensor(logits), dim=1)
+    probs = probs[:, 1].tolist()
+    true_labels = np.argmax(true_labels, axis=-1)
         
     return probs, true_labels  # Convert to numpy here
 
@@ -235,9 +186,9 @@ def draw_probabilities_seqseq_to_seqlab(outputs, threshold=.5):
     return predicted_1s, true_labels
         
 
-def evaluate_main(trainer, test_dataset, seq_to_seq=False):
+def evaluate_main(trainer, test_dataset):
     probs, true_labels = draw_probabilities_from_trainer(
-        trainer, test_dataset, seq_to_seq=seq_to_seq)
+        trainer, test_dataset)
     
     auc, fpr, tpr = compute_auc(
         y_pred=probs, y_true=true_labels)
@@ -245,25 +196,7 @@ def evaluate_main(trainer, test_dataset, seq_to_seq=False):
     plot = plt.plot(fpr, tpr, label="Vanilla labelling ROC curve (area = %0.3f)" % auc)
    
     eval_metrics = compute_metrics_after_training(
-        y_pred=probs, y_true=true_labels, seq_to_seq=seq_to_seq)
-    
-    if seq_to_seq:  
-        outputs = trainer.predict(test_dataset)
-        probs, true_labels = draw_probabilities_seqseq_to_seqlab(
-            outputs, threshold=.5)
-        
-        eval_metrics = compute_metrics_after_training(
-            y_pred=probs, y_true=true_labels, label="_thresh.5")
-        wandb.log(eval_metrics)
-
-        auc_1, fpr, tpr = compute_auc(y_pred=probs, y_true=true_labels)
-
-        plot = plt.plot(fpr, tpr, label="Threshold .5 ROC curve (area = %0.3f)" % auc_1)
-        
-        # plot fpr and tpr as a line plot
-        wandb.log({"roc": wandb.Image(plot[0]), "auc": auc})
-        
-        return
+        y_pred=probs, y_true=true_labels)
     
     # plot fpr and tpr as a line plot
     wandb.log({"roc": wandb.Image(plot[0]), "auc": auc})
@@ -294,25 +227,6 @@ def prediction_time_from_end_positive(probs, threshold):
     return probs.shape[0] - index
 
 
-def get_probs_from_seq_to_seq_model(shot, eval_model):
-    """Get predicted probabilities from a seq_to_seq model.
-
-    Args:
-        shot (ModelReadyDatasetSeqtoSeqDisruption): Shot object.
-        eval_model (object): Model to evaluate.
-
-    Returns:
-        probs (np.array): Predicted probabilities.
-    """
-
-    outputs = eval_model(inputs_embeds=shot["inputs_embeds"].unsqueeze(0).to(torch.float16))
-    logits = outputs.logits
-    probs = F.softmax(logits.cpu().detach().clone(), dim=2)
-    probs = probs.numpy()[0, :, :]
-
-    return probs
-
-
 def get_probs_from_seq_to_lab_model(shot, eval_model):
     """Get predicted probabilities from a seq_to_lab model.
     
@@ -336,12 +250,11 @@ def get_probs_from_seq_to_lab_model(shot, eval_model):
     return probs
 
 
-def separate_d_and_nd_shots(val_dataset, seq_to_seq):
+def separate_d_and_nd_shots(val_dataset):
     """Separate disruptive and non-disruptive shots from the validation dataset.
 
     Args:
         val_dataset (ModelReadyDataset): Validation dataset, of ModelReadyDataset.
-        seq_to_seq (bool): Whether the model is seq_to_seq or not.
 
     Returns:
         d_test_shots (ModelReadyDataset): Disruptive shots.
@@ -356,7 +269,7 @@ def separate_d_and_nd_shots(val_dataset, seq_to_seq):
 
     for i in range(len(val_dataset)):
         df = val_dataset[i]
-        lab = np.array(df["labels"].cpu().tolist()[-1] if seq_to_seq else df["labels"].cpu()[1])
+        lab = np.array(df["labels"].cpu()[1])
         if lab > .5:
             d_shot_inds.append(i)
         else:
@@ -375,7 +288,7 @@ def evaluate_main_seq(
         val_dataset,
         standardize_plot_length,
         threshold=.6,
-        seq_to_seq=False,):
+        ):
     """Evaluate custom sequence metrics for the model on the validation dataset.
 
     Args:
@@ -384,7 +297,7 @@ def evaluate_main_seq(
         threshold (float): Threshold for drawing labels.
     """
 
-    _, _, nd_shot_inds, d_shot_inds, max_len = separate_d_and_nd_shots(val_dataset, seq_to_seq)
+    _, _, nd_shot_inds, d_shot_inds, max_len = separate_d_and_nd_shots(val_dataset)
     
     prediction_times_from_end = []
     areas_under_threshold = []
@@ -440,7 +353,6 @@ def distance_to_disruptivity_curve(
         eval_model, 
         taus,
         eval_dataset,
-        seq_to_seq,
         window_length,
         mean_and_std):
     """Compute the distance to the disruptivity curve for a given model and taus.
@@ -449,7 +361,6 @@ def distance_to_disruptivity_curve(
         eval_model (transformers.PreTrainedModel): Model to evaluate.
         taus (list): List of taus to evaluate.
         eval_dataset (Dataset): Test dataset.
-        seq_to_seq (bool): Whether the model is seq_to_seq or not.
         window_length (int): Window length for smoothing.
         mean_and_std (bool): whether distance should be mean and std or just mean.
     """
@@ -473,12 +384,7 @@ def distance_to_disruptivity_curve(
             num_non_disruptions += 1
 
         # make predictions 
-        if seq_to_seq:
-            logits = eval_model(
-                inputs_embeds=shot["inputs_embeds"].unsqueeze(0).to(torch.float16)).logits
-            probs = F.softmax(logits, dim=-1).cpu().detach().numpy()[0,:,1]
-        else:
-            probs = get_probs_from_seq_to_lab_model(shot=shot, eval_model=eval_model)[:, 1]
+        probs = get_probs_from_seq_to_lab_model(shot=shot, eval_model=eval_model)[:, 1]
         
         # calculate distance
         if smoothed_curve.shape[0] > probs.shape[0]:

@@ -18,7 +18,7 @@ from models import (
     PlasmaTransformerSeqtoLab, PlasmaTransformerSeqtoSeq,
     StatePredictionPlasmaTransformer)
 from data_processing import (
-    load_data, collate_fn_seq_to_label, collate_fn_seq_to_seq)
+    load_data, collate_fn_seq_to_label)
 import data_processing
 import evaluation, arg_parsing, trainers, plotting, dataset_types
 import utils
@@ -62,9 +62,7 @@ if __name__ == "__main__":
     seed = 42
     utils.set_seed_across_frameworks(seed)
 
-    seq_to_label, seq_to_seq = (model_type == "seq_to_label", model_type == "seq_to_seq")
-
-    ModelPlaceholder = PlasmaTransformerSeqtoLab if seq_to_label else PlasmaTransformerSeqtoSeq 
+    ModelPlaceholder = PlasmaTransformerSeqtoLab
 
     model = ModelPlaceholder(
         output_dir = "test_trainer",
@@ -165,11 +163,11 @@ if __name__ == "__main__":
         "machine_hyperparameters": machine_hyperparameters,
         "dataset_type": "state",
         "taus": taus,
+        "use_smoothed_tau": use_smoothed_tau,
         "data_augmentation_windowing": data_augmentation_windowing,
         "data_augmentation_intensity": data_augmentation_ratio,
         "data_augmentation_ratio": data_augmentation_ratio,
         "ratio_to_augment": data_augmentation_ratio,
-        "seq_to_seq": seq_to_seq,
         "scaling_type": scaling_type,
         "max_length": max_length,
         "window_length": disruptivity_distance_window_length,
@@ -255,8 +253,9 @@ if __name__ == "__main__":
         print(f"Training with end cutoff {ec}")
         print("---------------------")
 
-        data_processing_args["dataset_type"] = "seq_to_label" if seq_to_label else "seq_to_seq"
+        data_processing_args["dataset_type"] = "seq_to_label"
         data_processing_args["end_cutoff_timesteps"] = ec
+        seq_to_label = True
 
         train_dataset, test_dataset, val_dataset = data_processing.process_train_test_val_inds(
             train_inds=train_inds,
@@ -274,24 +273,23 @@ if __name__ == "__main__":
         
         if not vanilla_loss:
             class_proportions = utils.determine_class_proportions(
-            train_dataset, inverse_class_weighting, seq_to_label, seq_to_seq)
+            train_dataset, inverse_class_weighting, seq_to_label)
             trainer = trainers.ClassImbalanceLossTrainer(
                 model=model,
                 args=training_args,
                 data_collator=partial(
                     collate_fn_seq_to_label,
                     pad_from_left=pad_from_left,
-                    truncate_longer=truncate_longer) if seq_to_label else collate_fn_seq_to_seq,
+                    truncate_longer=truncate_longer),
                 class_weights=class_proportions,
                 device=device,
                 train_dataset=train_dataset,
                 eval_dataset=test_dataset,
-                compute_metrics=evaluation.compute_metrics if seq_to_label else evaluation.compute_metrics_seq_to_seq,
+                compute_metrics=evaluation.compute_metrics,
                 # callbacks=[allWandbCallback],
                 optimizers=(optimizer, None),
                 regularize_logits=regularize_logits,
                 regularize_logits_weight=regularize_logits_weight,
-                seq_to_seq=seq_to_seq,
             )
 
         else:
@@ -301,8 +299,8 @@ if __name__ == "__main__":
                 data_collator=partial(
                     collate_fn_seq_to_label,
                     pad_from_left=pad_from_left,
-                    truncate_longer=truncate_longer) if seq_to_label else collate_fn_seq_to_seq,
-                compute_metrics=evaluation.compute_metrics if seq_to_label else evaluation.compute_metrics_seq_to_seq,
+                    truncate_longer=truncate_longer),
+                compute_metrics=evaluation.compute_metrics,
                 train_dataset=train_dataset,
                 eval_dataset=test_dataset,
                 # callbacks=[allWandbCallback],
@@ -330,11 +328,10 @@ if __name__ == "__main__":
     
     print("Evaluating...")
 
-    evaluation.evaluate_main(trainer, test_dataset, seq_to_seq = seq_to_seq) 
+    evaluation.evaluate_main(trainer, test_dataset) 
     evaluation.evaluate_main_seq(
         trainer, test_dataset,
-        standardize_plot_length=standardize_disruptivity_plot_length,
-        seq_to_seq = seq_to_seq)   
+        standardize_plot_length=standardize_disruptivity_plot_length)   
 
     print("Visualizing the attention layers...")
     sampled_shots = random.sample(range(len(test_dataset)), 5)
