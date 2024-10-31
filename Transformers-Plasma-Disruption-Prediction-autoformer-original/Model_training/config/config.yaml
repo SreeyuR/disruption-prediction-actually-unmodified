@@ -68,11 +68,9 @@ default: &DEFAULT
     tau_d3d: 35
     tau_east: 75
     standardize_disruptivity_plot_length: True
-    use_smoothed_tau: True
-    alex_method: False
+    use_smoothed_tau: True # always tau
     data_context_length: 100
     fix_sampling: True
-    keep_jx_uneven_sampling: True # flag indicating whether to keep the original uneven sampling for a specific machine
     smooth_v_loop: True
     v_loop_smoother: 10
 

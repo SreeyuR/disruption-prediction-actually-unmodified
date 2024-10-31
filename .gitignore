@@ -16,14 +16,19 @@ output.log
 *.bin
 
 # Ignore pickled files
-*.pickle
-*.pickle.dvc
+**/*.pickle
+**/*.pickle.dvc
+
+**/*.sh
 
 # Ignore CSV files (optional, in case you want to skip data files)
 *.csv
 
 # Ignore log files
 *.log
+
+.idea/
+test_trainer/
 
 # Ignore system-specific files
 .DS_Store

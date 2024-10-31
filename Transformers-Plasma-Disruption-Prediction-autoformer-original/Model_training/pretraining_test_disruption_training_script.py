@@ -103,7 +103,7 @@ if __name__ == "__main__":
         case_number=case_number,
         tau=tau,
         testing=testing,
-        data_augmentation=False, # TODO: add data augmentation for states
+        data_augmentation_windowing=False,
         data_augmentation_factor=data_augmentation_factor,
         scaling_type=scaling_type,
         tau_additions_switch=tau_additions_switch,) 
@@ -150,8 +150,8 @@ if __name__ == "__main__":
         early_stopping = custom_callbacks.NoSaveEarlyStoppingCallback(
             early_stopping_patience=10, early_stopping_threshold=0.001)
 
-    if seq_to_label + seq_to_seq_vanilla + multi_loss > 1:
-        raise ValueError("Only one of seq_to_label, seq_to_seq_vanilla, multi_loss can be True")
+    if seq_to_label + seq_to_seq_vanilla > 1:
+        raise ValueError("Only one of seq_to_label and seq_to_seq_vanilla can be True")
 
     # Set up state_ptretraining Trainer 
 

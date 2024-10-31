@@ -63,6 +63,7 @@ def get_data_filename(folder, filename):
     """
     cwd = os.path.join(os.getcwd(), folder)
     print(f'Current Working Directory: {cwd}')
+    print(os.path.join(cwd, filename))
     if os.path.exists(os.path.join(cwd, filename)):
         f = os.path.join(cwd, filename)
     else:
@@ -80,8 +81,7 @@ def set_up_wandb(model, training_args, seed, parsed_args):
     Returns:
         None
     """
-    wandb.init(project="HDL-improvement-transformer",
-               entity="mit_psfc",
+    wandb.init(project="disruption-repdiction-transformer-orig",
                group=parsed_args["sweep_id"],
                name=parsed_args["run_id"],)
 

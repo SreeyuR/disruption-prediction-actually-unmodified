@@ -14,7 +14,8 @@ import copy
 from dataset_types import (
     ModelReadyDataset, ModelReadyDatasetSeqtoSeqDisruption,
     ModelReadyDatasetStatePretraining)
-from dataset_augmentation_strategies import augment_training_set
+from dataset_augmentation_strategies import (
+    augment_data_windowing, augment_training_set, restricted_data_augmentation_windowing,)
 import dataset_augmentation_strategies
 
 from fastdtw import fastdtw
@@ -47,7 +48,6 @@ def load_data(filename):
 
 def fix_resample_data_issue(
         data,
-        keep_jx_uneven_sampling,
         resample_rate=.005):
     """Fix the issue with resampling the data.
 
@@ -63,15 +63,11 @@ def fix_resample_data_issue(
         data[i]["data"].set_index("time", inplace=True)
         if data[i]["machine"] == "d3d":
             data[i]["data"] = data[i]["data"].resample(str(.025) + "S").ffill()
-
-            if not keep_jx_uneven_sampling:
-                data[i]["data"] = data[i]["data"].resample(str(resample_rate) + "S").ffill()
+            data[i]["data"] = data[i]["data"].resample(str(resample_rate) + "S").ffill()
 
         elif data[i]["machine"] == "east":
             data[i]["data"] = data[i]["data"].resample(str(.1) + "S").ffill()
-
-            if not keep_jx_uneven_sampling:
-                data[i]["data"] = data[i]["data"].resample(str(resample_rate) + "S").ffill()
+            data[i]["data"] = data[i]["data"].resample(str(resample_rate) + "S").ffill()
 
         data[i]["data"].reset_index(inplace=True)
 
@@ -102,13 +98,13 @@ def train_test_val_inds_from_file(
 
     print(f'current working directory V2: {os.getcwd()}')
     train_inds = pd.read_csv(
-        f"{os.getcwd()}/tokamak/Transformers-Plasma-Disruption-Prediction-autoformer/Model_training/train_inds_case{case_number}.csv")[
+        f"{os.getcwd()}/Transformers-Plasma-Disruption-Prediction-autoformer-original/Model_training/train_inds_case{case_number}.csv")[
         "dataset_index"].tolist()
     test_inds = pd.read_csv(
-        f"{os.getcwd()}/tokamak/Transformers-Plasma-Disruption-Prediction-autoformer/Model_training/holdout_inds_case{case_number}.csv")[
+        f"{os.getcwd()}/Transformers-Plasma-Disruption-Prediction-autoformer-original/Model_training/holdout_inds_case{case_number}.csv")[
         "dataset_index"].tolist()
     val_inds = pd.read_csv(
-        f"{os.getcwd()}/tokamak/Transformers-Plasma-Disruption-Prediction-autoformer/Model_training/val_inds_case{case_number}.csv")[
+        f"{os.getcwd()}/Transformers-Plasma-Disruption-Prediction-autoformer-original/Model_training/val_inds_case{case_number}.csv")[
         "dataset_index"].tolist()
 
     if testing:
@@ -186,7 +182,7 @@ def process_train_test_val_inds(
         testing (bool): Whether to use a reduced sample for code testing.
         taus (dict): Number of timesteps to use for disruption prediction, separated by machine.
         seq_to_seq (bool): Whether to use a seq-to-seq model.
-        data_augmentation (bool): Whether to use data augmentation.
+        data_augmentation_windowing (bool): Whether to use data augment using windows of the data.
         data_augmentation_ratio (int): Factor by which to augment data.
         scaling_type (str): Type of scaling to use.
         balance_classes (bool): Whether to balance the classes.
@@ -202,7 +198,7 @@ def process_train_test_val_inds(
     
     scale_labels = False
     dataset_type = data_processing_args["dataset_type"]
-    data_augmentation = data_processing_args["data_augmentation"]
+    data_augmentation_windowing = data_processing_args["data_augmentation_windowing"]
 
     if dataset_type == "state":
         DatasetPlaceholder = ModelReadyDatasetStatePretraining
@@ -238,14 +234,17 @@ def process_train_test_val_inds(
         train_scaler, scale_labels=scale_labels)
     val_dataset.move_data_to_device()
 
-
-    if data_augmentation and dataset_type != "state":
-        train_dataset = augment_training_set(
-            train_dataset,
-            seq_to_seq=seq_to_seq,
-            **data_processing_args)
-
     train_dataset.move_data_to_device()
+    
+    if data_augmentation_windowing and dataset_type != "state":
+        train_dataset = augment_data_windowing(
+            train_dataset,
+            **data_processing_args,
+        )
+        val_dataset = augment_data_windowing(
+            val_dataset,
+            **data_processing_args,
+        )
 
     return train_dataset, test_dataset, val_dataset
 

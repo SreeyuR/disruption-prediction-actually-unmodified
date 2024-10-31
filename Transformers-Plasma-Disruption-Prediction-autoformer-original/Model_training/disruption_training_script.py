@@ -95,13 +95,12 @@ if __name__ == "__main__":
     # get the name of the data file
     cwd = os.getcwd()
     data_filename="Full_HDL_dataset_unnormalized_no_nan_column_names_w_shot_and_time.pickle"
-    folder = f"{os.getcwd()}/Transformers-Plasma-Disruption-Prediction-autoformer/Model_training"
+    folder = f"{os.getcwd()}/Transformers-Plasma-Disruption-Prediction-autoformer-original/Model_training"
     f = utils.get_data_filename(folder, data_filename)
     data = load_data(f)
 
     if fix_sampling:
-        data = data_processing.fix_resample_data_issue(
-            data=data, keep_jx_uneven_sampling=keep_jx_uneven_sampling)
+        data = data_processing.fix_resample_data_issue(data=data)
 
     # make a dictionary of the machine hyperparameters
     machine_hyperparameters = {
@@ -166,15 +165,13 @@ if __name__ == "__main__":
         "machine_hyperparameters": machine_hyperparameters,
         "dataset_type": "state",
         "taus": taus,
-        "data_augmentation": data_augmentation,
+        "data_augmentation_windowing": data_augmentation_windowing,
         "data_augmentation_intensity": data_augmentation_ratio,
         "data_augmentation_ratio": data_augmentation_ratio,
         "ratio_to_augment": data_augmentation_ratio,
         "seq_to_seq": seq_to_seq,
         "scaling_type": scaling_type,
-        "balance_classes": balance_classes,
         "max_length": max_length,
-        "use_smoothed_tau": use_smoothed_tau,
         "window_length": disruptivity_distance_window_length,
         "context_length": data_context_length,
         "smooth_v_loop": smooth_v_loop,
@@ -328,8 +325,8 @@ if __name__ == "__main__":
     trainer.save_model(os.path.join(wandb.run.dir, "model.h5"))
 
     print("Computing wall clock time...")
-    for length in (10, 100, 1000):
-        utils.compute_wall_clock(eval_model = trainer.model.eval(), eval_dataset = val_dataset, length=length)
+   # for length in (10, 100, 1000):
+   #     utils.compute_wall_clock(eval_model = trainer.model.eval(), eval_dataset = val_dataset, length=length)
     
     print("Evaluating...")
 
